@@ -5,10 +5,18 @@ Werkzeug Documentation:  http://werkzeug.pocoo.org/documentation/
 This file creates your application.
 """
 
-from app import app
-from flask import render_template, request, redirect, url_for
 
-
+import os
+from flask import session,render_template, request, redirect, url_for, jsonify,flash
+SECRET_KEY="super secure key"
+from random import randint
+from werkzeug.utils import secure_filename
+from app.models import User
+from sqlalchemy.sql import exists
+from datetime import *
+from app import app,db
+import time
+from form import ProfileForm
 ###
 # Routing for your application.
 ###
@@ -22,18 +30,65 @@ def home():
 @app.route('/about/')
 def about():
     """Render the website's about page."""
-    return render_template('about.html', name="Mary Jane")
+    return render_template('about.html')
 
+@app.route('/profile/',methods=['GET','POST'])
+def profile_add():
+    form = ProfileForm(csrf_enabled=False)
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            username = request.form['username'].strip()
+            first_name = request.form['first_name'].strip()
+            last_name = request.form['last_name'].strip()
+            sex = request.form['sex']
+            age = request.form['age']
+            image = request.files['image']
+            while True:
+                userid = randint(620000000,620099999)
+                if not db.session.query(exists().where(User.userid == str(userid))).scalar():
+                    break
+            filename = secure_filename(image.filename)
+            image.save(os.path.join('app/static/uploads', filename))
+            profile_added_on = datetime.now()
+            user = User(userid,first_name,last_name,username,sex,age,filename,profile_added_on)
+            db.session.add(user)
+            db.session.commit()
+            flash("User Successfully Added", category='success')
+            return redirect('/profiles')
+    return render_template('profileform.html',form=form)
 
-###
-# The functions below should be applicable to all Flask apps.
-###
+@app.route('/profile/<userid>', methods=['POST', 'GET'])
+def selectedprofile(userid):
+  user = User.query.filter_by(userid=userid).first()
+  if not user:
+      flash("Sorry Couldn't Find User" , category="danger")
+  else:
+      image = '/static/uploads/' + user.image
+      if request.method == 'POST' and request.headers['Content-Type']== 'application/json':
+            return jsonify(userid=user.userid, image=image,username=user.username, sex=user.sex, age=user.age,profile_added_on=user.profile_added_on)
+      else:
+            user = {'id':user.userid,'image':image, 'username':user.username,'first_name':user.first_name, 'last_name':user.last_name,'age':user.age, 'sex':user.sex,'profile_added_on':timeinfo(user.profile_added_on)}
+            return render_template('profile.html', user=user)
+  return redirect(url_for("profiles"))
 
-@app.route('/<file_name>.txt')
-def send_text_file(file_name):
-    """Send your static text file."""
-    file_dot_text = file_name + '.txt'
-    return app.send_static_file(file_dot_text)
+def timeinfo(entry):
+    day = time.strftime("%a")
+    date = time.strftime("%d")
+    if (date <10):
+        date = date.lstrip('0')
+    month = time.strftime("%b")
+    year = time.strftime("%Y")
+    return day + ", " + date + " " + month + " " + year
+
+@app.route('/profiles', methods=["GET", "POST"])
+def profiles():
+  users = db.session.query(User).all()
+  userlist=[]
+  for user in users:
+    userlist.append({'username':user.username,'userid':user.userid})
+    if request.method == 'POST' and request.headers['Content-Type']== 'application/json':
+        return jsonify(users=userlist)
+  return render_template('profiles.html', users=users)
 
 
 @app.after_request
@@ -54,4 +109,4 @@ def page_not_found(error):
 
 
 if __name__ == '__main__':
-    app.run(debug=True,host="0.0.0.0",port="8080")
+    app.run(debug=True,host="0.0.0.0",port="5000")
