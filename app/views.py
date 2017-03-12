@@ -11,12 +11,12 @@ from flask import session,render_template, request, redirect, url_for, jsonify,f
 SECRET_KEY="super secure key"
 from random import randint
 from werkzeug.utils import secure_filename
-from app.models import User
+from app.models import Person
 from sqlalchemy.sql import exists
 from datetime import *
 from app import app,db
 import time
-from form import ProfileForm
+from form import Pform
 ###
 # Routing for your application.
 ###
@@ -34,61 +34,54 @@ def about():
 
 @app.route('/profile/',methods=['GET','POST'])
 def profile_add():
-    form = ProfileForm(csrf_enabled=False)
+    form = Pform(csrf_enabled=False)
     if request.method == 'POST':
         if form.validate_on_submit():
-            username = request.form['username'].strip()
-            first_name = request.form['first_name'].strip()
-            last_name = request.form['last_name'].strip()
-            sex = request.form['sex']
+            bio = request.form['personname'].strip()
+            fname = request.form['first_name'].strip()
+            lname = request.form['last_name'].strip()
+            gender = request.form['gender']
             age = request.form['age']
             image = request.files['image']
             while True:
-                userid = randint(620000000,620099999)
-                if not db.session.query(exists().where(User.userid == str(userid))).scalar():
+                numid = randint(450000,470000)
+                pid = 'PID'+ str(numid)
+                if not db.session.query(exists().where(Person.pid == str(pid))).scalar():
                     break
             filename = secure_filename(image.filename)
-            image.save(os.path.join('app/static/uploads', filename))
-            profile_added_on = datetime.now()
-            user = User(userid,first_name,last_name,username,sex,age,filename,profile_added_on)
-            db.session.add(user)
+            image.save(os.path.join('app/static/Images', filename))
+            created_on = datetime.now()
+            person = Person(pid,fname,lname,bio,sex,age,filename,created_on)
+            db.session.add(person)
             db.session.commit()
-            flash("User Successfully Added", category='success')
+            flash("Person was added to Database")
             return redirect('/profiles')
-    return render_template('profileform.html',form=form)
+    return render_template('profile_form.html',form=form)
 
-@app.route('/profile/<userid>', methods=['POST', 'GET'])
-def selectedprofile(userid):
-  user = User.query.filter_by(userid=userid).first()
-  if not user:
-      flash("Sorry Couldn't Find User" , category="danger")
+@app.route('/profile/<pid>', methods=['POST', 'GET'])
+def selectedprofile(pid):
+  person = Person.query.filter_by(pid=pid).first()
+  if not person:
+      flash("Sorry Couldn't Find person" )
   else:
-      image = '/static/uploads/' + user.image
+      image = '/static/Images/' + person.image
       if request.method == 'POST' and request.headers['Content-Type']== 'application/json':
-            return jsonify(userid=user.userid, image=image,username=user.username, sex=user.sex, age=user.age,profile_added_on=user.profile_added_on)
+            return jsonify(pid=person.pid, image=image,username=person.fname+' '+person.lname, gender=person.gender,bio=person.bio, age=person.age,created_on=person.created_on)
       else:
-            user = {'id':user.userid,'image':image, 'username':user.username,'first_name':user.first_name, 'last_name':user.last_name,'age':user.age, 'sex':user.sex,'profile_added_on':timeinfo(user.profile_added_on)}
-            return render_template('profile.html', user=user)
+            person = {'ID':person.pid,'image':image, 'username':person.fname+' '+person.lname,'fname':person.fname, 'lname':person.lname,'bio':person.bio,'age':person.age, 'gender':person.gender,'created_on':person.created_on}
+            return render_template('profile.html', person=person)
   return redirect(url_for("profiles"))
 
-def timeinfo(entry):
-    day = time.strftime("%a")
-    date = time.strftime("%d")
-    if (date <10):
-        date = date.lstrip('0')
-    month = time.strftime("%b")
-    year = time.strftime("%Y")
-    return day + ", " + date + " " + month + " " + year
 
 @app.route('/profiles', methods=["GET", "POST"])
 def profiles():
-  users = db.session.query(User).all()
-  userlist=[]
-  for user in users:
-    userlist.append({'username':user.username,'userid':user.userid})
+  persons = db.session.query(Person).all()
+  lst=[]
+  for person in persons:
+    lst.append({'username':person.fname+' '+person.lname,'pid':person.pid})
     if request.method == 'POST' and request.headers['Content-Type']== 'application/json':
-        return jsonify(users=userlist)
-  return render_template('profiles.html', users=users)
+        return jsonify(persons=lst)
+  return render_template('profiles.html', persons=persons)
 
 
 @app.after_request
