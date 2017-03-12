@@ -37,9 +37,9 @@ def profile_add():
     form = Pform(csrf_enabled=False)
     if request.method == 'POST':
         if form.validate_on_submit():
-            bio = request.form['personname'].strip()
-            fname = request.form['first_name'].strip()
-            lname = request.form['last_name'].strip()
+            bio = request.form['bio'].strip()
+            fname = request.form['fname'].strip()
+            lname = request.form['lname'].strip()
             gender = request.form['gender']
             age = request.form['age']
             image = request.files['image']

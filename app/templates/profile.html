@@ -1,20 +1,28 @@
 {% extends "base.html" %}
 
-
 {% block css %}
+<link rel="stylesheet" href="/static/css/profile.css">
 {% endblock %}
-
-{% block js %}
-{% endblock %}
-
 {% block main %}
-<div class="container">
-  <h1>All Profiles:</h1>
-  <ul>
-  {% for person in persons %}
-  <li><a href="/profile/{{person.pid}}">{{person.pid}} : {{person.username}}</a></li>
-  <hr>
-  {% endfor %}
-</ul>
+    <div id="profile-pic">
+         <img id="picture" src="{{person['image']}}">
+    </div>
+    <div class="container">
+  <h2> Profile</h2>
+  
+       <div> {{person['fname']}} {{person['lname']}} </div>
+      
+        <div> Profile Added On: {{person['created_on']}}</div>
+      
+        <div> Username: {{person['username']}}</div>
+     
+        <div> ID: {{person['pid']}}</div>
+    
+        <div> Sex: {{person['gender']}}</div>
+   
+        <div>Age: {{person['age']}}</div>
+        
+         <div>Biography : {{person['bio']}}</div>
 </div>
+
 {% endblock %}
